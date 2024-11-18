@@ -4,7 +4,7 @@ self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
             const urlsToCache = Array.from({ length: 30 }, (_, i) => 
-                `/test-files/test-file-${i + 1}.txt`
+                `./test-files/test-file-${i + 1}.txt`
             );
             console.log('Iniciando cache dos arquivos...');
             return cache.addAll(urlsToCache);
