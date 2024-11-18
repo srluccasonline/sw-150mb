@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Cache PWA</title>
+</head>
+<body>
+    <h1>Teste de Cache PWA</h1>
+    <button onclick="checkSupport()">Verificar Suporte</button>
+    <button onclick="listCachedFiles()">Listar Arquivos em Cache</button>
+    <button onclick="testCache()">Testar Cache</button>
+    <div id="status"></div>
+    <div id="results"></div>
+
+    <script>
+        // Verificar recursos do navegador
+        async function checkSupport() {
+            const results = document.getElementById('results');
+            let html = '<h3>Verificação de Suporte:</h3><ul>';
+            
+            html += `<li>ServiceWorker: ${'serviceWorker' in navigator ? 'Sim' : 'Não'}</li>`;
+            html += `<li>Caches: ${'caches' in window ? 'Sim' : 'Não'}</li>`;
+            html += `<li>Fetch: ${'fetch' in window ? 'Sim' : 'Não'}</li>`;
+            
+            html += '</ul>';
+            results.innerHTML = html;
+        }
+
+        async function listCachedFiles() {
+            const status = document.getElementById('status');
+            const results = document.getElementById('results');
+            
+            try {
+                if (!window.caches) {
+                    throw new Error('Cache Storage não disponível');
+                }
+
+                const cacheNames = await window.caches.keys();
+                if (cacheNames.length === 0) {
+                    results.innerHTML = '<p>Nenhum cache encontrado!</p>';
+                    return;
+                }
+
+                let html = '<h3>Caches encontrados:</h3><ul>';
+                
+                for (const cacheName of cacheNames) {
+                    const cache = await caches.open(cacheName);
+                    const requests = await cache.keys();
+                    
+                    html += `<li><strong>${cacheName}</strong> (${requests.length} arquivos)<ul>`;
+                    for (const request of requests) {
+                        html += `<li>${request.url}</li>`;
+                    }
+                    html += '</ul></li>';
+                }
+                
+                html += '</ul>';
+                results.innerHTML = html;
+                status.textContent = `Total de caches: ${cacheNames.length}`;
+                
+            } catch (error) {
+                status.textContent = 'Erro: ' + error.message;
+                console.error('Erro completo:', error);
+                results.innerHTML = '';
+            }
+        }
+
+        // Registrar Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(registration => {
+                    console.log('Service Worker registrado:', registration);
+                })
+                .catch(error => {
+                    console.error('Erro ao registrar Service Worker:', error);
+                });
+        }
+
+        async function testCache() {
+            const status = document.getElementById('status');
+            const results = document.getElementById('results');
+            status.textContent = 'Testando cache...';
+            results.innerHTML = '';
+            
+            try {
+                for (let i = 1; i <= 30; i++) {
+                    const startTime = performance.now();
+                    const response = await fetch(`/test-files/test-file-${i}.txt`);
+                    const endTime = performance.now();
+                    
+                    if (!response.ok) throw new Error(`Erro ao carregar arquivo ${i}`);
+                    
+                    const fromCache = response.headers.get('sw-from-cache') === 'true';
+                    const timeElapsed = (endTime - startTime).toFixed(2);
+                    
+                    results.innerHTML += `<div>Arquivo ${i}: ${timeElapsed}ms ${fromCache ? '(cache)' : '(rede)'}</div>`;
+                }
+                status.textContent = 'Teste completo!';
+            } catch (error) {
+                status.textContent = 'Erro ao testar cache: ' + error;
+            }
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 'Tamanho desconhecido') return bytes;
+            
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            if (bytes == 0) return '0 Byte';
+            const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+            return Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i];
+        }
+    </script>
+</body>
+</html>
